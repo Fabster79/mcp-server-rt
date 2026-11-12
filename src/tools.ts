@@ -4,6 +4,111 @@ import { dataFile } from './data-files.js';
 import { AttachmentInput, DEFAULT_FIELDS, RTClient } from './rt-client.js';
 
 export const TOOLS: Tool[] = [
+
+  // -- Knowledge article tools --
+  {
+    name: 'search_knowledge_articles',
+    description:
+      'Search RT knowledge articles by title. ' +
+      'Returns matching article references. ' +
+      'Use get_knowledge_article to retrieve full content.',
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Article title search term, e.g. VPN',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'get_knowledge_article',
+    description:
+      'Get a knowledge article including its title, ' +
+      'summary, and Content custom field.',
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'integer',
+          description: 'Knowledge article ID',
+        },
+      },
+      required: ['id'],
+    },
+  },
+
+
+  {
+    name: 'update_knowledge_article',
+    description:
+      'Update an existing RT knowledge article. ' +
+      'Read the article first, show the complete proposed ' +
+      'changes and request explicit user approval. ' +
+      'Content replaces the entire existing Content field.',
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true
+    },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'integer',
+          description: 'Existing article ID'
+        },
+        Name: {
+          type: 'string',
+          description: 'New title, optional'
+        },
+        Summary: {
+          type: 'string',
+          description: 'New summary, optional'
+        },
+        Content: {
+          type: 'string',
+          description: 'Complete replacement content, optional'
+        }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'create_knowledge_article',
+    description:
+      'Create a knowledge article in Request Tracker. ' +
+      'Show the complete draft to the user first. ' +
+      'Call this tool only after explicit user approval. ' +
+      'This operation writes data and may create duplicates.',
+    annotations: { destructiveHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: {
+        Name: {
+          type: 'string',
+          description: 'Knowledge article title'
+        },
+        Summary: {
+          type: 'string',
+          description: 'Short article summary'
+        },
+        Content: {
+          type: 'string',
+          description: 'Full knowledge article content'
+        },
+        Class: {
+          type: 'integer',
+          description: 'Article class ID, default 1 (General)',
+          default: 1
+        }
+      },
+      required: ['Name', 'Summary', 'Content']
+    }
+  },
   // -- Read-only tools --
   {
     name: 'search_tickets',
@@ -1048,6 +1153,31 @@ function rightsPrincipal(tool: string, args: Args): { type: string; id: string }
 export async function callTool(rt: RTClient, name: string, args: Args): Promise<unknown> {
   checkRequiredArgs(name, args);
   switch (name) {
+
+    case 'search_knowledge_articles':
+      return rt.searchKnowledgeArticles(args.query as string);
+
+    case 'get_knowledge_article':
+      return rt.getKnowledgeArticle(args.id as number);
+
+
+
+    case 'update_knowledge_article':
+      return rt.updateKnowledgeArticle(
+        args.id as number,
+        args.Name as string | undefined,
+        args.Summary as string | undefined,
+        args.Content as string | undefined
+      );
+
+    case 'create_knowledge_article':
+      return rt.createKnowledgeArticle(
+        args.Name as string,
+        args.Summary as string,
+        args.Content as string,
+        (args.Class ?? 1) as number
+      );
+
     case 'search_tickets':
       return rt.searchTickets(args.query as string, {
         orderby: args.orderby as string | undefined,

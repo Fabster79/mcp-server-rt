@@ -373,6 +373,88 @@ export class RTClient {
     return this.rewriteUrls(await response.json());
   }
 
+
+  // Knowledge article operations
+
+  searchKnowledgeArticles(query: string): Promise<unknown> {
+    if (!query.trim()) {
+      throw new Error("Search query must not be empty");
+    }
+
+    return this.request('POST', 'articles', [
+      {
+        field: 'Name',
+        operator: 'LIKE',
+        value: query,
+      },
+    ]);
+  }
+
+  getKnowledgeArticle(id: number): Promise<unknown> {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("Article ID must be a positive integer");
+    }
+    return this.request('GET', `article/${id}`);
+  }
+
+
+
+  updateKnowledgeArticle(
+    id: number,
+    Name?: string,
+    Summary?: string,
+    Content?: string
+  ): Promise<unknown> {
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("Article ID must be positive");
+    }
+
+    const data: Record<string, unknown> = {};
+
+    if (Name !== undefined) {
+      if (!Name.trim()) throw new Error("Name cannot be empty");
+      data.Name = Name.trim();
+    }
+
+    if (Summary !== undefined) {
+      data.Summary = Summary;
+    }
+
+    if (Content !== undefined) {
+      if (!Content.trim()) {
+        throw new Error("Content cannot be empty");
+      }
+      data.CustomFields = { Content };
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new Error("No fields provided for update");
+    }
+
+    return this.request('PUT', `article/${id}`, data);
+  }
+
+  createKnowledgeArticle(
+    Name: string,
+    Summary: string,
+    Content: string,
+    Class: number = 1
+  ): Promise<unknown> {
+    if (!Name?.trim() || !Content?.trim()) {
+      throw new Error("Name and Content are required");
+    }
+    if (!Number.isInteger(Class) || Class <= 0) {
+      throw new Error("Class must be a positive integer");
+    }
+
+    return this.request('POST', 'article', {
+      Name: Name.trim(),
+      Summary: Summary?.trim() ?? '',
+      Class,
+      CustomFields: { Content }
+    });
+  }
+
   // Ticket operations
 
   searchTickets(query: string, opts: SearchOptions = {}): Promise<unknown> {
