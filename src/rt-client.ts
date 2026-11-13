@@ -343,6 +343,8 @@ export class RTClient {
     body?: unknown,
     params?: Record<string, string | number | undefined>,
     subfields?: Record<string, string>,
+    includeEtag: boolean = false,
+    extraHeaders?: Record<string, string>,
   ): Promise<unknown> {
     const url = new URL(`${this.url}/REST/2.0/${path}`);
     if (params) {
@@ -358,7 +360,7 @@ export class RTClient {
 
     const response = await fetch(url.toString(), {
       method,
-      headers: this.headers(),
+      headers: { ...this.headers(), ...extraHeaders },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -370,7 +372,16 @@ export class RTClient {
     // A successful DELETE can come back as 204 with no body to parse.
     if (response.status === 204) return null;
 
-    return this.rewriteUrls(await response.json());
+    const result = this.rewriteUrls(await response.json());
+
+    if (includeEtag) {
+      return {
+        ...(result as Record<string, unknown>),
+        ETag: response.headers?.get('etag') ?? null,
+      };
+    }
+
+    return result;
   }
 
 
@@ -394,7 +405,14 @@ export class RTClient {
     if (!Number.isInteger(id) || id <= 0) {
       throw new Error("Article ID must be a positive integer");
     }
-    return this.request('GET', `article/${id}`);
+    return this.request(
+      'GET',
+      `article/${id}`,
+      undefined,
+      undefined,
+      undefined,
+      true
+    );
   }
 
 
@@ -403,7 +421,8 @@ export class RTClient {
     id: number,
     Name?: string,
     Summary?: string,
-    Content?: string
+    Content?: string,
+    ETag?: string
   ): Promise<unknown> {
     if (!Number.isInteger(id) || id <= 0) {
       throw new Error("Article ID must be positive");
@@ -431,7 +450,22 @@ export class RTClient {
       throw new Error("No fields provided for update");
     }
 
-    return this.request('PUT', `article/${id}`, data);
+    // Only accept a single strong, quoted ETag.
+    if (!ETag || !/^"[\x21\x23-\x7e]+"$/.test(ETag)) {
+      throw new Error(
+        'A valid quoted ETag is required. Read the article first.'
+      );
+    }
+
+    return this.request(
+      'PUT',
+      `article/${id}`,
+      data,
+      undefined,
+      undefined,
+      false,
+      { 'If-Match': ETag }
+    );
   }
 
   createKnowledgeArticle(

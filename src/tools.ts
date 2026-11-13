@@ -72,9 +72,15 @@ export const TOOLS: Tool[] = [
         Content: {
           type: 'string',
           description: 'Complete replacement content, optional'
+        },
+        ETag: {
+          type: 'string',
+          description:
+            'Exact quoted ETag returned by get_knowledge_article. ' +
+            'Required to prevent overwriting concurrent changes.'
         }
       },
-      required: ['id']
+      required: ['id', 'ETag']
     }
   },
   {
@@ -1167,7 +1173,8 @@ export async function callTool(rt: RTClient, name: string, args: Args): Promise<
         args.id as number,
         args.Name as string | undefined,
         args.Summary as string | undefined,
-        args.Content as string | undefined
+        args.Content as string | undefined,
+        args.ETag as string
       );
 
     case 'create_knowledge_article':
